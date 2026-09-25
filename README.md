@@ -74,3 +74,24 @@ HF_MODEL_RESEARCH=deepseek-ai/DeepSeek-V4.1-Flash
 ## Notes
 
 Open weights do not mean unlimited free hosted inference. Hugging Face Inference Providers require an eligible token/credits and model/provider availability can change. If a particular model is not currently served, DVILR's fallback chain will try a lighter configured model.
+
+
+## DVILR AI1 V2 UI
+
+V2 is a major visual/UX upgrade:
+
+- cinematic animated aurora + grid background
+- animated DVILR reactor branding
+- polished glass surfaces and depth
+- upgraded model-mode cards and transitions
+- compact hero after chat starts
+- quick-start prompt cards
+- animated message entry
+- copy-response action
+- richer model-thinking animation
+- auto-growing message composer
+- improved mobile spacing and safe-area handling
+- clearer HF_TOKEN configuration error card
+- reduced-motion accessibility support
+
+The model router and server-side token architecture stay unchanged.

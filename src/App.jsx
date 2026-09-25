@@ -31,21 +31,33 @@ export default function App() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [copiedIndex, setCopiedIndex] = useState(null);
   const endRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const selected = useMemo(
     () => MODES.find((item) => item.id === mode) || MODES[0],
     [mode]
   );
 
+  const hasConversation = messages.some((message) => message.role === "user");
+  const tokenError = /HF_TOKEN/i.test(error);
+
   useEffect(() => {
     localStorage.setItem("dvilr-mode", mode);
   }, [mode]);
 
   useEffect(() => {
-    localStorage.setItem("dvilr-chat", JSON.stringify(messages.slice(-40)));
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    localStorage.setItem("dvilr-chat", JSON.stringify(messages.slice(-50)));
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, busy]);
+
+  useEffect(() => {
+    const field = textareaRef.current;
+    if (!field) return;
+    field.style.height = "auto";
+    field.style.height = Math.min(field.scrollHeight, 180) + "px";
+  }, [input]);
 
   async function sendMessage() {
     const content = input.trim();
@@ -107,12 +119,28 @@ export default function App() {
   function clearChat() {
     setMessages([STARTER]);
     setError("");
+    setInput("");
+  }
+
+  async function copyMessage(text, index) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      window.setTimeout(() => setCopiedIndex(null), 1200);
+    } catch {
+      setError("Could not copy that response.");
+    }
   }
 
   return (
     <main className="app-shell">
+      <div className="ambient" aria-hidden="true">
+        <div className="aurora aurora-one" />
+        <div className="aurora aurora-two" />
+        <div className="grid-field" />
+      </div>
       <aside className="sidebar">
-        <div className="brand">
+        <div className="brand brand-v2">
           <div className="brand-mark">D</div>
           <div>
             <h1>DVILR</h1>
@@ -149,7 +177,7 @@ export default function App() {
         </button>
 
         <div className="sidebar-footer">
-          <span>DVILR AI1</span>
+          <span>DVILR AI1 · V2</span>
           <span>Open-model router</span>
         </div>
       </aside>
@@ -172,16 +200,30 @@ export default function App() {
         </header>
 
         <div className="chat">
-          <div className="hero">
-            <div className="hero-orb">D</div>
-            <h2>One AI. Multiple brains.</h2>
+          <div className="route-glow" aria-hidden="true" />
+          <div className={`hero ${hasConversation ? "compact" : ""}`}>
+            <div className="hero-orb-wrap">
+              <div className="hero-ring ring-one" />
+              <div className="hero-ring ring-two" />
+              <div className="hero-orb">D</div>
+            </div>
+            <div className="hero-kicker"><span>DVILR ROUTER</span><i /><span>6 MODEL TIERS</span></div>
+            <h2>One AI. <span>Multiple brains.</span></h2>
             <p>
               DVILR routes each conversation to the model tier you choose — or
               automatically picks one for you.
             </p>
+            {!hasConversation && (
+              <div className="quick-prompts">
+                <button type="button" onClick={() => setInput("Explain this clearly and simply: ")}><span>⌁</span><strong>Explain</strong><small>Break it down</small></button>
+                <button type="button" onClick={() => setInput("Help me build and debug this: ")}><span>&lt;/&gt;</span><strong>Code</strong><small>Build + debug</small></button>
+                <button type="button" onClick={() => setInput("Create a practical step-by-step plan for: ")}><span>◇</span><strong>Plan</strong><small>Make a roadmap</small></button>
+                <button type="button" onClick={() => setInput("Compare these options and explain the tradeoffs: ")}><span>⇄</span><strong>Compare</strong><small>Find tradeoffs</small></button>
+              </div>
+            )}
           </div>
 
-          <div className="messages">
+          <div className="messages" aria-live="polite">
             {messages.map((message, index) => (
               <article
                 key={index}
@@ -197,6 +239,11 @@ export default function App() {
                         {message.meta.fallbackUsed ? " · fallback" : ""}
                       </span>
                     )}
+                    {message.role === "assistant" && (
+                      <button className="copy-button" type="button" onClick={() => void copyMessage(message.content, index)}>
+                        {copiedIndex === index ? "✓ COPIED" : "COPY"}
+                      </button>
+                    )}
                   </div>
                   <div className="message-text">{message.content}</div>
                 </div>
@@ -207,9 +254,9 @@ export default function App() {
               <article className="message assistant">
                 <div className="avatar">D</div>
                 <div className="bubble loading-bubble">
-                  <span />
-                  <span />
-                  <span />
+                  <div className="thinking-copy"><strong>DVILR is thinking</strong><small>{selected.label} · {selected.model}</small></div>
+                  <div className="typing-dots"><span /><span /><span /></div>
+                  <div className="thinking-bar"><i /></div>
                 </div>
               </article>
             )}
@@ -219,11 +266,21 @@ export default function App() {
         </div>
 
         <div className="composer-wrap">
-          {error && <div className="error-banner">{error}</div>}
+          {error && (
+            <div className={`error-banner ${tokenError ? "config-error" : ""}`}>
+              <div className="error-icon">!</div>
+              <div className="error-copy">
+                <strong>{tokenError ? "Server setup required" : "Request failed"}</strong>
+                <span>{error}</span>
+                {tokenError && <small>Add <code>HF_TOKEN</code> in Netlify environment variables, then redeploy. Never expose the token in frontend code.</small>}
+              </div>
+            </div>
+          )}
           <div className="composer">
             <textarea
+              ref={textareaRef}
               value={input}
-              onChange={(event) => setInput(event.target.value)}
+              onChange={(event) => setInput(event.target.value.slice(0, 4000))}
               onKeyDown={onKeyDown}
               placeholder={`Message DVILR · ${selected.label} mode`}
               rows={1}
@@ -241,7 +298,7 @@ export default function App() {
           </div>
           <div className="composer-meta">
             <span>Enter to send · Shift + Enter for a new line</span>
-            <span>HF token stays on the server</span>
+            <span>Server-routed inference · keys stay private</span>
           </div>
         </div>
       </section>
